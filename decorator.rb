@@ -1,4 +1,5 @@
 class Decorator
+  # delegate delegate_missing_to :up_level
 
   def self.configure(*args, &block)
     obj = self.new(*args)
@@ -69,7 +70,7 @@ class Sufix < Decorator
   end
 end
 
-class FirstLetters < Decorator
+class WordFirstLetter < Decorator
   def make_it_fancy(str)
     str.split(' ').map do |word|
       @sub_levels.each do |sub_level|
@@ -80,17 +81,35 @@ class FirstLetters < Decorator
   end
 end
 
-
-decorated_string =
-  StrDecorator.configure('This is a test') do
-    wrap Upcase
-    wrap( FirstLetters.configure do
-      wrap Downcase
-      wrap MakeItTwice
-    end)
-    wrap Tr.configure(' ', '-')
-    wrap Prefix.configure('Attention:')
-    wrap Sufix.configure('!!!')
+class WordLastLetter < Decorator
+  def make_it_fancy(str)
+    str.split(' ').map do |word|
+      @sub_levels.each do |sub_level|
+        word[-1] = sub_level.make_it_fancy(word[-1])
+      end
+      word
+    end.join(' ')
   end
+end
 
-decorated_string.make_it_fancy # Attention: ttHIS-iiS-aa-ttEST !!!
+class Erase < Decorator
+  def make_it_fancy(str)
+    return ''
+  end
+end
+
+decorated_string = StrDecorator.configure('This is a test') do
+  wrap Upcase
+  wrap WordFirstLetter.configure {
+    wrap Downcase
+    wrap MakeItTwice
+  }
+  wrap(WordLastLetter.configure do
+    wrap Erase
+  end)
+  wrap Tr.configure(' ', '-')
+  wrap Prefix.configure('Attention:')
+  wrap Sufix.configure('!!!')
+end
+
+decorated_string.make_it_fancy # Attention: ttHI-ii-a-ttES !!!
