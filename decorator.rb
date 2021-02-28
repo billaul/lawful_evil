@@ -1,6 +1,4 @@
 class Decorator
-  # delegate delegate_missing_to :up_level
-
   def self.configure(*args, &block)
     obj = self.new(*args)
     obj.instance_exec(&block) if block_given?
