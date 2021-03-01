@@ -11,8 +11,6 @@ class Decorator
   end
 end
 
-# Interface
-
 module FancyInterface
   def make_it_fancy(...)
     raise NoMethodError
