@@ -1,67 +1,49 @@
-# Decorator mother class
 class Decorator
-  
-  def self.configure(*args, &block)
-    obj = self.new
-    obj.config(*args) unless args.empty?
-    obj.instance_exec(&block) if block_given?
-    obj
+  attr_reader :sub_level
+
+  def initialize(*args, &block)
+    config(*args) unless args.empty?
+    @sub_level = yield
   end
 
   def config(*args)
     raise NoMethodError
   end
-
-  def initialize(*args )
-    @args = args
-    @sub_levels = []
-  end
-
-  def wrap(sub_level)
-    @sub_levels <<
-      if sub_level.respond_to? :new
-        sub_level.new
-      else
-        sub_level
-      end
-    self
-  end
 end
 
-# unnecessary layer, it make clear what is the name of the decorating method
-class FancyDecorator < Decorator
+# Interface
+
+module FancyInterface
   def make_it_fancy(...)
     raise NoMethodError
   end
 end
 
-# Apply each sub_decorator to a string
-class StrDecorator < FancyDecorator
-  attr_accessor :string
+class FancyDecorator < Decorator
+  include FancyInterface
+end
 
-  def config(string)
+class Message
+  include FancyInterface
+  
+  def initialize(string)
     @string = string
   end
 
   def make_it_fancy
-    @sub_levels.each do |sub_level|
-      self.string = sub_level.make_it_fancy(string)
-    end
-    string
+    @string
   end
 end
 
-# A long list of stupid decorators
-
 class Upcase < FancyDecorator
-  def make_it_fancy(str)
-    str.upcase
+  def make_it_fancy
+    sub_level.make_it_fancy.upcase
   end
 end
 
 class Downcase < FancyDecorator
-  def make_it_fancy(str)
-    str.downcase
+  def make_it_fancy
+    sub_level.make_it_fancy.downcase
   end
 end
 
@@ -74,14 +56,8 @@ class Tr < FancyDecorator
     @new_char = new_char
   end
 
-  def make_it_fancy(str)
-    str.tr(old_char, new_char)
-  end
-end
-
-class MakeItTwice < FancyDecorator
-  def make_it_fancy(str)
-    str + str
+  def make_it_fancy
+    sub_level.make_it_fancy.tr(old_char, new_char)
   end
 end
 
@@ -92,8 +68,8 @@ class Prefix < FancyDecorator
     @prefix = prefix
   end
 
-  def make_it_fancy(str)
-    "#{prefix} #{str}"
+  def make_it_fancy
+    "#{prefix} #{sub_level.make_it_fancy}"
   end
 end
 
@@ -103,56 +79,21 @@ class Sufix < FancyDecorator
   def config(sufix)
     @sufix = sufix
   end
-  def make_it_fancy(str)
-    "#{str} #{sufix}"
+  def make_it_fancy
+    "#{sub_level.make_it_fancy} #{sufix}"
   end
 end
 
-class WordFirstLetter < FancyDecorator
-  def make_it_fancy(str)
-    str.split(' ').map do |word|
-      @sub_levels.each do |sub_level|
-        word[0] = sub_level.make_it_fancy(word[0])
+decorated_string =
+  Sufix.new('!!!') do
+    Prefix.new('Attention:') do
+      Tr.new(' ', '-') do
+        Upcase.new do
+          Message.new('This is a test')
+        end
       end
-      word
-    end.join(' ')
+    end
   end
-end
 
-class WordLastLetter < FancyDecorator
-  def make_it_fancy(str)
-    str.split(' ').map do |word|
-      @sub_levels.each do |sub_level|
-        word[-1] = sub_level.make_it_fancy(word[-1])
-      end
-      word
-    end.join(' ')
-  end
-end
-
-class Erase < FancyDecorator
-  def make_it_fancy(str)
-    return ''
-  end
-end
-
-# End of the long list of stupid decorators
-
-# Build up the decorator
-decorated_string = StrDecorator.configure('This is a test') do
-  wrap Upcase
-  wrap WordFirstLetter.configure {
-    wrap Downcase
-    wrap MakeItTwice
-  }
-  wrap(WordLastLetter.configure do
-    wrap Erase
-  end)
-  wrap Tr.configure(' ', '-')
-  wrap Prefix.configure('Attention:')
-  wrap Sufix.configure('!!!')
-end
-# Make it FANCY !!!
-fancy_string = decorated_string.make_it_fancy 
-puts fancy_string # Attention: ttHI-ii-a-ttES !!!
-
+fancy_string = decorated_string.make_it_fancy
+puts fancy_string # Attention: THIS-IS-A-TEST !!!
